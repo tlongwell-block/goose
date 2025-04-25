@@ -1,0 +1,17 @@
+{
+  "name": "web-simple",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

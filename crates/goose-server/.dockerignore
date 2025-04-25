@@ -1,0 +1,20 @@
+# Git directory
+.git
+.gitignore
+
+# Target directory
+target/
+
+# IDE directories
+.idea/
+.vscode/
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Any existing debug logs
+*.log
+
+# Dependencies
+node_modules/

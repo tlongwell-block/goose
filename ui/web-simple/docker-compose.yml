@@ -1,0 +1,65 @@
+services:
+  # Goose server (backend)
+  goosed:
+    build:
+      context: ../../
+      dockerfile: crates/goose-server/Dockerfile
+    ports:
+      - "7878:7878"  # Map to the default port expected by web-simple UI
+    environment:
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+      - GOOSE_HOST=0.0.0.0
+      - GOOSE_PORT=7878  # Use port 7878 to match web-simple default
+      - GOOSE_SERVER__SECRET_KEY=goose-web-simple  # Simple default secret key
+      - GOOSE_MODEL=qwen2.5-coder:3b  # Default model
+      - GOOSE_DEFAULT_PROVIDER=ollama  # Default provider
+      #- OLLAMA_HOST=http://ollama:11434  # Connect to the Ollama container
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    # depends_on:
+    #   - ollama
+    networks:
+      - goose-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7878/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Ollama service for local LLM
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+  #   networks:
+  #     - goose-network
+  #   entrypoint: ["/bin/bash", "-c", "ollama serve & sleep 5 && ollama pull qwen2.5-coder:3b && wait"]
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:11434/api/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
+
+  # Web Simple UI (frontend)
+  web-simple:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    networks:
+      - goose-network
+    depends_on:
+      - goosed
+
+networks:
+  goose-network:
+    driver: bridge
+
+# volumes:
+#   ollama-data:
+#     driver: local

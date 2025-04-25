@@ -1,0 +1,30 @@
+# Use an official Node.js runtime as a parent image
+FROM node:20-slim
+
+LABEL maintainer="Goose AI Team <ai-oss-tools@block.xyz>"
+LABEL description="CI environment for testing the simple web UI JavaScript code"
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install project dependencies
+RUN npm ci
+
+# Copy application code and test files
+COPY main.js .
+COPY app.js .
+COPY api.js .
+COPY ui.js .
+COPY provider_registry.js .
+COPY app.test.mjs .
+COPY jest.config.mjs .
+COPY index.html .
+COPY style.css .
+
+# Define the command to run the tests when the container starts
+# Note: Node needs experimental flag for JSON modules if used directly
+# Jest handles modules automatically
+CMD ["npm", "test"]

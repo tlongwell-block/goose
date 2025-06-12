@@ -130,7 +130,8 @@ pub fn manage_schedule_tool() -> Tool {
             - "kill": Terminate a currently running job
             - "inspect": Get details about a running job
             - "sessions": List execution history for a job
-        "#}.to_string(),
+        "#}
+        .to_string(),
         json!({
             "type": "object",
             "required": ["action"],

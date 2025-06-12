@@ -380,19 +380,22 @@ impl Agent {
         (request_id, result)
     }
 
-    async fn handle_schedule_management(
+    pub(crate) async fn handle_schedule_management(
         &self,
         arguments: serde_json::Value,
         _request_id: String,
     ) -> ToolResult<Vec<Content>> {
         let scheduler = match self.scheduler_service.lock().await.as_ref() {
             Some(s) => s.clone(),
-            None => return Err(ToolError::ExecutionError(
-                "Scheduler not available. This tool only works in server mode.".to_string()
-            )),
+            None => {
+                return Err(ToolError::ExecutionError(
+                    "Scheduler not available. This tool only works in server mode.".to_string(),
+                ))
+            }
         };
 
-        let action = arguments.get("action")
+        let action = arguments
+            .get("action")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'action' parameter".to_string()))?;
 
@@ -406,47 +409,80 @@ impl Agent {
             "kill" => self.handle_kill_job(scheduler, arguments).await,
             "inspect" => self.handle_inspect_job(scheduler, arguments).await,
             "sessions" => self.handle_list_sessions(scheduler, arguments).await,
-            _ => Err(ToolError::ExecutionError(format!("Unknown action: {}", action))),
+            _ => Err(ToolError::ExecutionError(format!(
+                "Unknown action: {}",
+                action
+            ))),
         }
     }
 
-    async fn handle_list_jobs(&self, scheduler: Arc<dyn SchedulerTrait>) -> ToolResult<Vec<Content>> {
+    async fn handle_list_jobs(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+    ) -> ToolResult<Vec<Content>> {
         match scheduler.list_scheduled_jobs().await {
             Ok(jobs) => {
-                let jobs_json = serde_json::to_string_pretty(&jobs)
-                    .map_err(|e| ToolError::ExecutionError(format!("Failed to serialize jobs: {}", e)))?;
-                Ok(vec![Content::text(format!("Scheduled Jobs:\n{}", jobs_json))])
+                let jobs_json = serde_json::to_string_pretty(&jobs).map_err(|e| {
+                    ToolError::ExecutionError(format!("Failed to serialize jobs: {}", e))
+                })?;
+                Ok(vec![Content::text(format!(
+                    "Scheduled Jobs:\n{}",
+                    jobs_json
+                ))])
             }
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to list jobs: {}", e))),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to list jobs: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_create_job(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let recipe_path = arguments.get("recipe_path")
+    async fn handle_create_job(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let recipe_path = arguments
+            .get("recipe_path")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ToolError::ExecutionError("Missing 'recipe_path' parameter".to_string()))?;
+            .ok_or_else(|| {
+                ToolError::ExecutionError("Missing 'recipe_path' parameter".to_string())
+            })?;
 
-        let cron_expression = arguments.get("cron_expression")
+        let cron_expression = arguments
+            .get("cron_expression")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ToolError::ExecutionError("Missing 'cron_expression' parameter".to_string()))?;
+            .ok_or_else(|| {
+                ToolError::ExecutionError("Missing 'cron_expression' parameter".to_string())
+            })?;
 
         // Validate recipe file exists and is readable
         if !std::path::Path::new(recipe_path).exists() {
-            return Err(ToolError::ExecutionError(format!("Recipe file not found: {}", recipe_path)));
+            return Err(ToolError::ExecutionError(format!(
+                "Recipe file not found: {}",
+                recipe_path
+            )));
         }
 
         // Validate it's a valid recipe by trying to parse it
         match std::fs::read_to_string(recipe_path) {
             Ok(content) => {
                 if recipe_path.ends_with(".json") {
-                    serde_json::from_str::<Recipe>(&content)
-                        .map_err(|e| ToolError::ExecutionError(format!("Invalid JSON recipe: {}", e)))?;
+                    serde_json::from_str::<Recipe>(&content).map_err(|e| {
+                        ToolError::ExecutionError(format!("Invalid JSON recipe: {}", e))
+                    })?;
                 } else {
-                    serde_yaml::from_str::<Recipe>(&content)
-                        .map_err(|e| ToolError::ExecutionError(format!("Invalid YAML recipe: {}", e)))?;
+                    serde_yaml::from_str::<Recipe>(&content).map_err(|e| {
+                        ToolError::ExecutionError(format!("Invalid YAML recipe: {}", e))
+                    })?;
                 }
             }
-            Err(e) => return Err(ToolError::ExecutionError(format!("Cannot read recipe file: {}", e))),
+            Err(e) => {
+                return Err(ToolError::ExecutionError(format!(
+                    "Cannot read recipe file: {}",
+                    e
+                )))
+            }
         }
 
         // Generate unique job ID
@@ -464,68 +500,134 @@ impl Agent {
         };
 
         match scheduler.add_scheduled_job(job).await {
-            Ok(()) => Ok(vec![Content::text(format!("Successfully created scheduled job '{}' for recipe '{}' with cron expression '{}'", job_id, recipe_path, cron_expression))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to create job: {}", e))),
+            Ok(()) => Ok(vec![Content::text(format!(
+                "Successfully created scheduled job '{}' for recipe '{}' with cron expression '{}'",
+                job_id, recipe_path, cron_expression
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to create job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_run_now(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_run_now(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
         match scheduler.run_now(job_id).await {
-            Ok(session_id) => Ok(vec![Content::text(format!("Successfully started job '{}'. Session ID: {}", job_id, session_id))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to run job: {}", e))),
+            Ok(session_id) => Ok(vec![Content::text(format!(
+                "Successfully started job '{}'. Session ID: {}",
+                job_id, session_id
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to run job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_pause_job(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_pause_job(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
         match scheduler.pause_schedule(job_id).await {
-            Ok(()) => Ok(vec![Content::text(format!("Successfully paused job '{}'", job_id))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to pause job: {}", e))),
+            Ok(()) => Ok(vec![Content::text(format!(
+                "Successfully paused job '{}'",
+                job_id
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to pause job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_unpause_job(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_unpause_job(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
         match scheduler.unpause_schedule(job_id).await {
-            Ok(()) => Ok(vec![Content::text(format!("Successfully unpaused job '{}'", job_id))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to unpause job: {}", e))),
+            Ok(()) => Ok(vec![Content::text(format!(
+                "Successfully unpaused job '{}'",
+                job_id
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to unpause job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_delete_job(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_delete_job(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
         match scheduler.remove_scheduled_job(job_id).await {
-            Ok(()) => Ok(vec![Content::text(format!("Successfully deleted job '{}'", job_id))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to delete job: {}", e))),
+            Ok(()) => Ok(vec![Content::text(format!(
+                "Successfully deleted job '{}'",
+                job_id
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to delete job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_kill_job(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_kill_job(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
         match scheduler.kill_running_job(job_id).await {
-            Ok(()) => Ok(vec![Content::text(format!("Successfully killed running job '{}'", job_id))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to kill job: {}", e))),
+            Ok(()) => Ok(vec![Content::text(format!(
+                "Successfully killed running job '{}'",
+                job_id
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to kill job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_inspect_job(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_inspect_job(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
@@ -537,43 +639,63 @@ impl Agent {
                     job_id, session_id, start_time.to_rfc3339(), duration.num_seconds()
                 ))])
             }
-            Ok(None) => Ok(vec![Content::text(format!("Job '{}' is not currently running", job_id))]),
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to inspect job: {}", e))),
+            Ok(None) => Ok(vec![Content::text(format!(
+                "Job '{}' is not currently running",
+                job_id
+            ))]),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to inspect job: {}",
+                e
+            ))),
         }
     }
 
-    async fn handle_list_sessions(&self, scheduler: Arc<dyn SchedulerTrait>, arguments: serde_json::Value) -> ToolResult<Vec<Content>> {
-        let job_id = arguments.get("job_id")
+    async fn handle_list_sessions(
+        &self,
+        scheduler: Arc<dyn SchedulerTrait>,
+        arguments: serde_json::Value,
+    ) -> ToolResult<Vec<Content>> {
+        let job_id = arguments
+            .get("job_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionError("Missing 'job_id' parameter".to_string()))?;
 
-        let limit = arguments.get("limit")
+        let limit = arguments
+            .get("limit")
             .and_then(|v| v.as_u64())
             .unwrap_or(50) as usize;
 
         match scheduler.sessions(job_id, limit).await {
             Ok(sessions) => {
                 if sessions.is_empty() {
-                    Ok(vec![Content::text(format!("No sessions found for job '{}'", job_id))])
+                    Ok(vec![Content::text(format!(
+                        "No sessions found for job '{}'",
+                        job_id
+                    ))])
                 } else {
-                    let sessions_info: Vec<String> = sessions.into_iter()
+                    let sessions_info: Vec<String> = sessions
+                        .into_iter()
                         .map(|(session_name, metadata)| {
-                            format!("- Session: {} (Messages: {}, Working Dir: {})", 
-                                session_name, 
+                            format!(
+                                "- Session: {} (Messages: {}, Working Dir: {})",
+                                session_name,
                                 metadata.message_count,
                                 metadata.working_dir.display()
                             )
                         })
                         .collect();
-                    
+
                     Ok(vec![Content::text(format!(
-                        "Sessions for job '{}':\n{}", 
-                        job_id, 
+                        "Sessions for job '{}':\n{}",
+                        job_id,
                         sessions_info.join("\n")
                     ))])
                 }
             }
-            Err(e) => Err(ToolError::ExecutionError(format!("Failed to list sessions: {}", e))),
+            Err(e) => Err(ToolError::ExecutionError(format!(
+                "Failed to list sessions: {}",
+                e
+            ))),
         }
     }
 
@@ -1208,12 +1330,12 @@ mod schedule_tool_tests {
     use super::*;
     use crate::scheduler::{ScheduledJob, SchedulerError};
     use crate::scheduler_trait::SchedulerTrait;
+    use crate::session::storage::SessionMetadata;
     use async_trait::async_trait;
     use chrono::{DateTime, Utc};
     use mcp_core::{Content, ToolError};
     use serde_json::json;
     use std::sync::Arc;
-    use crate::session::storage::SessionMetadata;
 
     // Mock scheduler for testing
     struct MockScheduler {
@@ -1263,11 +1385,19 @@ mod schedule_tool_tests {
             Ok("test_session_123".to_string())
         }
 
-        async fn sessions(&self, _sched_id: &str, _limit: usize) -> Result<Vec<(String, SessionMetadata)>, SchedulerError> {
+        async fn sessions(
+            &self,
+            _sched_id: &str,
+            _limit: usize,
+        ) -> Result<Vec<(String, SessionMetadata)>, SchedulerError> {
             Ok(vec![])
         }
 
-        async fn update_schedule(&self, _sched_id: &str, _new_cron: String) -> Result<(), SchedulerError> {
+        async fn update_schedule(
+            &self,
+            _sched_id: &str,
+            _new_cron: String,
+        ) -> Result<(), SchedulerError> {
             Ok(())
         }
 
@@ -1275,7 +1405,10 @@ mod schedule_tool_tests {
             Ok(())
         }
 
-        async fn get_running_job_info(&self, _sched_id: &str) -> Result<Option<(String, DateTime<Utc>)>, SchedulerError> {
+        async fn get_running_job_info(
+            &self,
+            _sched_id: &str,
+        ) -> Result<Option<(String, DateTime<Utc>)>, SchedulerError> {
             Ok(None)
         }
     }
@@ -1291,9 +1424,11 @@ mod schedule_tool_tests {
             "action": "list"
         });
 
-        let result = agent.handle_schedule_management(arguments, "test_req".to_string()).await;
+        let result = agent
+            .handle_schedule_management(arguments, "test_req".to_string())
+            .await;
         assert!(result.is_ok());
-        
+
         let content = result.unwrap();
         assert_eq!(content.len(), 1);
         if let Content::Text(text_content) = &content[0] {
@@ -1310,9 +1445,11 @@ mod schedule_tool_tests {
             "action": "list"
         });
 
-        let result = agent.handle_schedule_management(arguments, "test_req".to_string()).await;
+        let result = agent
+            .handle_schedule_management(arguments, "test_req".to_string())
+            .await;
         assert!(result.is_err());
-        
+
         if let Err(ToolError::ExecutionError(msg)) = result {
             assert!(msg.contains("Scheduler not available"));
         }
@@ -1329,13 +1466,17 @@ mod schedule_tool_tests {
             "job_id": "test_job"
         });
 
-        let result = agent.handle_schedule_management(arguments, "test_req".to_string()).await;
+        let result = agent
+            .handle_schedule_management(arguments, "test_req".to_string())
+            .await;
         assert!(result.is_ok());
-        
+
         let content = result.unwrap();
         assert_eq!(content.len(), 1);
         if let Content::Text(text_content) = &content[0] {
-            assert!(text_content.text.contains("Successfully started job 'test_job'"));
+            assert!(text_content
+                .text
+                .contains("Successfully started job 'test_job'"));
             assert!(text_content.text.contains("test_session_123"));
         }
     }
@@ -1354,15 +1495,17 @@ mod schedule_tool_tests {
             }),
         };
 
-        let (request_id, result) = agent.dispatch_tool_call(tool_call, "test_dispatch".to_string()).await;
+        let (request_id, result) = agent
+            .dispatch_tool_call(tool_call, "test_dispatch".to_string())
+            .await;
         assert_eq!(request_id, "test_dispatch");
         assert!(result.is_ok());
-        
+
         let tool_result = result.unwrap();
         // The result should be a future that resolves to the tool output
         let output = tool_result.result.await;
         assert!(output.is_ok());
-        
+
         let content = output.unwrap();
         assert_eq!(content.len(), 1);
         if let Content::Text(text_content) = &content[0] {
@@ -1374,12 +1517,16 @@ mod schedule_tool_tests {
     async fn test_schedule_management_tool_in_list_tools() {
         let agent = Agent::new();
         let tools = agent.list_tools(None).await;
-        
+
         // Check that the schedule management tool is included in the list
-        let schedule_tool = tools.iter().find(|tool| tool.name == PLATFORM_MANAGE_SCHEDULE_TOOL_NAME);
+        let schedule_tool = tools
+            .iter()
+            .find(|tool| tool.name == PLATFORM_MANAGE_SCHEDULE_TOOL_NAME);
         assert!(schedule_tool.is_some());
-        
+
         let tool = schedule_tool.unwrap();
-        assert!(tool.description.contains("Manage scheduled recipe execution"));
+        assert!(tool
+            .description
+            .contains("Manage scheduled recipe execution"));
     }
 }

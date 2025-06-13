@@ -44,7 +44,10 @@ impl ConfigurableMockScheduler {
     }
 
     pub async fn with_behavior(self, method: &str, behavior: MockBehavior) -> Self {
-        self.behaviors.lock().await.insert(method.to_string(), behavior);
+        self.behaviors
+            .lock()
+            .await
+            .insert(method.to_string(), behavior);
         self
     }
 
@@ -58,8 +61,15 @@ impl ConfigurableMockScheduler {
         self
     }
 
-    pub async fn with_sessions_data(self, job_id: &str, sessions: Vec<(String, SessionMetadata)>) -> Self {
-        self.sessions_data.lock().await.insert(job_id.to_string(), sessions);
+    pub async fn with_sessions_data(
+        self,
+        job_id: &str,
+        sessions: Vec<(String, SessionMetadata)>,
+    ) -> Self {
+        self.sessions_data
+            .lock()
+            .await
+            .insert(job_id.to_string(), sessions);
         self
     }
 
@@ -72,7 +82,9 @@ impl ConfigurableMockScheduler {
     }
 
     async fn get_behavior(&self, method: &str) -> MockBehavior {
-        self.behaviors.lock().await
+        self.behaviors
+            .lock()
+            .await
             .get(method)
             .cloned()
             .unwrap_or(MockBehavior::Success)
@@ -83,7 +95,7 @@ impl ConfigurableMockScheduler {
 impl SchedulerTrait for ConfigurableMockScheduler {
     async fn add_scheduled_job(&self, job: ScheduledJob) -> Result<(), SchedulerError> {
         self.log_call("add_scheduled_job").await;
-        
+
         match self.get_behavior("add_scheduled_job").await {
             MockBehavior::Success => {
                 let mut jobs = self.jobs.lock().await;
@@ -95,26 +107,26 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::AlreadyExists(id) => Err(SchedulerError::JobIdExists(id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     async fn list_scheduled_jobs(&self) -> Result<Vec<ScheduledJob>, SchedulerError> {
         self.log_call("list_scheduled_jobs").await;
-        
+
         match self.get_behavior("list_scheduled_jobs").await {
             MockBehavior::Success => {
                 let jobs = self.jobs.lock().await;
                 Ok(jobs.values().cloned().collect())
             }
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(vec![])
+            _ => Ok(vec![]),
         }
     }
 
     async fn remove_scheduled_job(&self, id: &str) -> Result<(), SchedulerError> {
         self.log_call("remove_scheduled_job").await;
-        
+
         match self.get_behavior("remove_scheduled_job").await {
             MockBehavior::Success => {
                 let mut jobs = self.jobs.lock().await;
@@ -126,13 +138,13 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     async fn pause_schedule(&self, id: &str) -> Result<(), SchedulerError> {
         self.log_call("pause_schedule").await;
-        
+
         match self.get_behavior("pause_schedule").await {
             MockBehavior::Success => {
                 let jobs = self.jobs.lock().await;
@@ -143,17 +155,20 @@ impl SchedulerTrait for ConfigurableMockScheduler {
                 }
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
-            MockBehavior::JobCurrentlyRunning(job_id) => Err(SchedulerError::AnyhowError(
-                anyhow::anyhow!("Cannot pause schedule '{}' while it's currently running", job_id)
-            )),
+            MockBehavior::JobCurrentlyRunning(job_id) => {
+                Err(SchedulerError::AnyhowError(anyhow::anyhow!(
+                    "Cannot pause schedule '{}' while it's currently running",
+                    job_id
+                )))
+            }
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     async fn unpause_schedule(&self, id: &str) -> Result<(), SchedulerError> {
         self.log_call("unpause_schedule").await;
-        
+
         match self.get_behavior("unpause_schedule").await {
             MockBehavior::Success => {
                 let jobs = self.jobs.lock().await;
@@ -165,13 +180,13 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     async fn run_now(&self, id: &str) -> Result<String, SchedulerError> {
         self.log_call("run_now").await;
-        
+
         match self.get_behavior("run_now").await {
             MockBehavior::Success => {
                 let jobs = self.jobs.lock().await;
@@ -183,7 +198,7 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok("mock_session_123".to_string())
+            _ => Ok("mock_session_123".to_string()),
         }
     }
 
@@ -193,7 +208,7 @@ impl SchedulerTrait for ConfigurableMockScheduler {
         limit: usize,
     ) -> Result<Vec<(String, SessionMetadata)>, SchedulerError> {
         self.log_call("sessions").await;
-        
+
         match self.get_behavior("sessions").await {
             MockBehavior::Success => {
                 let sessions_data = self.sessions_data.lock().await;
@@ -202,7 +217,7 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(vec![])
+            _ => Ok(vec![]),
         }
     }
 
@@ -212,7 +227,7 @@ impl SchedulerTrait for ConfigurableMockScheduler {
         _new_cron: String,
     ) -> Result<(), SchedulerError> {
         self.log_call("update_schedule").await;
-        
+
         match self.get_behavior("update_schedule").await {
             MockBehavior::Success => {
                 let jobs = self.jobs.lock().await;
@@ -224,27 +239,28 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
     async fn kill_running_job(&self, sched_id: &str) -> Result<(), SchedulerError> {
         self.log_call("kill_running_job").await;
-        
+
         match self.get_behavior("kill_running_job").await {
             MockBehavior::Success => {
                 let running_jobs = self.running_jobs.lock().await;
                 if running_jobs.contains(sched_id) {
                     Ok(())
                 } else {
-                    Err(SchedulerError::AnyhowError(
-                        anyhow::anyhow!("Schedule '{}' is not currently running", sched_id)
-                    ))
+                    Err(SchedulerError::AnyhowError(anyhow::anyhow!(
+                        "Schedule '{}' is not currently running",
+                        sched_id
+                    )))
                 }
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
@@ -253,7 +269,7 @@ impl SchedulerTrait for ConfigurableMockScheduler {
         sched_id: &str,
     ) -> Result<Option<(String, DateTime<Utc>)>, SchedulerError> {
         self.log_call("get_running_job_info").await;
-        
+
         match self.get_behavior("get_running_job_info").await {
             MockBehavior::Success => {
                 let running_jobs = self.running_jobs.lock().await;
@@ -265,7 +281,7 @@ impl SchedulerTrait for ConfigurableMockScheduler {
             }
             MockBehavior::NotFound(job_id) => Err(SchedulerError::JobNotFound(job_id)),
             MockBehavior::InternalError(msg) => Err(SchedulerError::SchedulerInternalError(msg)),
-            _ => Ok(None)
+            _ => Ok(None),
         }
     }
 }
@@ -283,29 +299,36 @@ pub fn create_temp_recipe(valid: bool, format: &str) -> TempRecipe {
 
     let content = if valid {
         match format {
-            "json" => r#"{
+            "json" => {
+                r#"{
     "version": "1.0.0",
     "title": "Test Recipe",
     "description": "A test recipe",
     "prompt": "Hello world"
-}"#,
-            "yaml" | "yml" => r#"version: "1.0.0"
+}"#
+            }
+            "yaml" | "yml" => {
+                r#"version: "1.0.0"
 title: "Test Recipe"
 description: "A test recipe"
 prompt: "Hello world"
-"#,
-            _ => panic!("Unsupported format: {}", format)
+"#
+            }
+            _ => panic!("Unsupported format: {}", format),
         }
     } else {
         match format {
             "json" => r#"{"invalid": json syntax"#,
             "yaml" | "yml" => "invalid:\n  - yaml: syntax: error",
-            _ => "invalid content"
+            _ => "invalid content",
         }
     };
 
     std::fs::write(&path, content).unwrap();
-    TempRecipe { path, _temp_dir: temp_dir }
+    TempRecipe {
+        path,
+        _temp_dir: temp_dir,
+    }
 }
 
 // Test builder for easy setup
@@ -354,7 +377,11 @@ impl ScheduleToolTestBuilder {
         self
     }
 
-    pub async fn with_sessions_data(self, job_id: &str, sessions: Vec<(String, SessionMetadata)>) -> Self {
+    pub async fn with_sessions_data(
+        self,
+        job_id: &str,
+        sessions: Vec<(String, SessionMetadata)>,
+    ) -> Self {
         {
             let mut sessions_data = self.scheduler.sessions_data.lock().await;
             sessions_data.insert(job_id.to_string(), sessions);

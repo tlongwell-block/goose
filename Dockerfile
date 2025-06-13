@@ -17,7 +17,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 # Create a new empty shell project
 WORKDIR /usr/src
-RUN git clone --depth 1 --branch platform_scheduler https://github.com/tlongwell-block/goose.git
+COPY . .
 WORKDIR /usr/src/goose
 # Build your project with debug symbols
 RUN RUSTFLAGS="-g" cargo build --release

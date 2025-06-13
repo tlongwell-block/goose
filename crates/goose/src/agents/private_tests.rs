@@ -4,7 +4,7 @@ use mcp_core::{Content, ToolError};
 use serde_json::json;
 
 use crate::agents::platform_tools::PLATFORM_MANAGE_SCHEDULE_TOOL_NAME;
-use crate::agents::schedule_tool_test_support::{
+use crate::agents::test_support::{
     create_temp_recipe, create_test_session_metadata, MockBehavior, ScheduleToolTestBuilder,
 };
 

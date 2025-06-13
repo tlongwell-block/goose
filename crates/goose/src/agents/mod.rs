@@ -9,9 +9,9 @@ mod reply_parts;
 mod router_tool_selector;
 mod router_tools;
 #[cfg(test)]
-mod schedule_tool_test_support;
+mod test_support;
 #[cfg(test)]
-mod schedule_tool_tests;
+mod private_tests;
 
 mod tool_execution;
 mod tool_router_index_manager;

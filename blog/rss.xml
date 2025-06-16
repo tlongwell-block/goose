@@ -4,81 +4,64 @@
         <title>codename goose Blog</title>
         <link>https://block.github.io/goose/blog</link>
         <description>codename goose Blog</description>
-        <lastBuildDate>Thu, 05 Jun 2025 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Mon, 16 Jun 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <item>
-            <title><![CDATA[What's in my .goosehints file (and why it probably shouldn't be)]]></title>
-            <link>https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file</link>
-            <guid>https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file</guid>
-            <pubDate>Thu, 05 Jun 2025 00:00:00 GMT</pubDate>
-            <description><![CDATA[A deep dive into .goosehints vs Memory Extension, and how to optimize your Goose configuration for better performance]]></description>
-            <content:encoded><![CDATA[<p><img decoding="async" loading="lazy" alt="blog cover" src="https://block.github.io/goose/assets/images/blog-banner-7f0e5ed1cf875e64e3ebb3250932baaf.png" width="1809" height="950" class="img_ev3q"></p>
-<p>As Goose users, we have two main ways to provide persistent context to our AI assistant: the <code>.goosehints</code> file and the <a href="https://block.github.io/goose/docs/tutorials/memory-mcp">Memory Extension</a> MCP server. Today, I'll share what's in my <code>.goosehints</code> file, why some of it should probably move to the Memory Extension, and how you can make that choice.</p>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="ai-agents-and-memory">AI Agents and Memory<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#ai-agents-and-memory" class="hash-link" aria-label="Direct link to AI Agents and Memory" title="Direct link to AI Agents and Memory">​</a></h2>
-<p>Imagine ordering coffee at two different cafes. At the first cafe, you're a first-time customer, carefully explaining "medium mocha latte, fat-free milk, extra hot, no foam, with one pump of vanilla." At your regular coffee spot, though, the barista sees you coming and just says "the usual?"</p>
-<p>That stored knowledge – your preferences, quirks, and routine – makes the whole interaction faster and more pleasant for everyone.</p>
-<p>This is exactly the challenge we face with AI assistants. By default, they start each conversation (aka, "context window") fresh – no memory of your coding standards, documentation preferences, or how you like your pull requests structured. The same way you'd get tired of reciting your detailed coffee order every morning, it's inefficient to repeatedly explain to your AI assistant that you prefer Python's Black formatter, want detailed commit messages, and or how you want to construct a briefing going to everyone in the company.</p>
-<p>This is where persistent context comes in. Through tools like <code>.goosehints</code> and the <a href="https://block.github.io/goose/docs/tutorials/memory-mcp">Memory Extension</a> MCP server, we can give our AI assistants the equivalent of a barista's "regular customer" knowledge. But just as you wouldn't want your barista memorizing your entire life story just to make your coffee, we need to be thoughtful about what context we make persistent. The key is finding the right balance between having enough context to work efficiently and not overwhelming our systems with unnecessary information.</p>
-<p>Let's explore how to strike that balance.</p>
-<h3 class="anchor anchorWithStickyNavbar_LWe7" id="what-is-goosehints">What is .goosehints?<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#what-is-goosehints" class="hash-link" aria-label="Direct link to What is .goosehints?" title="Direct link to What is .goosehints?">​</a></h3>
-<p><code>.goosehints</code> is a configuration file that lives in your Goose directory (usually <code>~/.config/goose/</code>). It can contain any information that you want Goose to process every time you interact with Goose, providing a foundation for how it interacts with you.</p>
-<p>You can read more about <code>.goosehints</code> in the <a href="https://block.github.io/goose/docs/guides/using-goosehints">Goose documentation</a>.</p>
-<h3 class="anchor anchorWithStickyNavbar_LWe7" id="what-is-the-memory-extension">What is the Memory Extension?<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#what-is-the-memory-extension" class="hash-link" aria-label="Direct link to What is the Memory Extension?" title="Direct link to What is the Memory Extension?">​</a></h3>
-<p>The <a href="https://block.github.io/goose/docs/tutorials/memory-mcp">Memory Extension</a> is a dynamic storage system using the Model Context Protocol that allows you to store and retrieve context on-demand using tags or keywords. It lives in your <code>~/.goose/memory</code> directory (local) or <code>~/.config/goose/memory</code> (global).</p>
-<p>Unlike <code>.goosehints</code>, which is static and loaded entirely with every request, Memory Extension can be updated and accessed as needed, allowing for more flexible and user-specific configurations.</p>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="how-are-goosehints-and-memory-extension-used-in-goose">How are .goosehints and Memory Extension used in Goose?<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#how-are-goosehints-and-memory-extension-used-in-goose" class="hash-link" aria-label="Direct link to How are .goosehints and Memory Extension used in Goose?" title="Direct link to How are .goosehints and Memory Extension used in Goose?">​</a></h2>
-<p>At a very high level, when you have a conversation with Goose, it processes your request in two main steps:</p>
-<p>Goose interprets your request to detect tags or keywords needed for possible Memory Extension lookups. Then it loads your entire <code>.goosehints</code> file, and sends that, along with any relevant Memory Extension entries to the LLM to generate a response.</p>
-<p><img decoding="async" loading="lazy" alt="how a user interaction works with Goose" src="https://block.github.io/goose/assets/images/goosehints-vs-memory-1f0cc2cadcfda38e903e66f5b82ef808.png" width="1024" height="1024" class="img_ev3q"></p>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="the-implications-of-goosehints">The Implications of .goosehints<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#the-implications-of-goosehints" class="hash-link" aria-label="Direct link to The Implications of .goosehints" title="Direct link to The Implications of .goosehints">​</a></h2>
-<p>To reiterate, <strong>every single line in your <code>.goosehints</code> file gets sent with every request to Goose</strong>. If you write a ton of rules and ideas with all your project preferences, coding standards, and workflow documentation and so on into the .goosehints file, the ENTIRE file is being transmitted and processed every time you ask Goose anything, even something as simple as "what time is it?"</p>
-<p>This is particularly important for users who are paying for their own LLM access (like ChatGPT or Gemini). Here's why:</p>
+            <title><![CDATA[Treating LLMs Like Tools in a Toolbox: A Multi-Model Approach to Smarter AI Agents]]></title>
+            <link>https://block.github.io/goose/blog/2025/06/16/multi-model-in-goose</link>
+            <guid>https://block.github.io/goose/blog/2025/06/16/multi-model-in-goose</guid>
+            <pubDate>Mon, 16 Jun 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[How Goose uses multiple LLMs within a single task, optimizing for speed, cost, and reliability in AI agent workflows]]></description>
+            <content:encoded><![CDATA[<p><img decoding="async" loading="lazy" alt="blog cover" src="https://block.github.io/goose/assets/images/multi-model-ai-agent-d408feaeba3e13cafdbfe9377980bc3d.png" width="1200" height="630" class="img_ev3q"></p>
+<p>Not every task needs a genius. And not every step should cost a fortune.</p>
+<p>That's something we've learned while scaling Goose, our open source AI agent. The same model that's great at unpacking a planning request might totally fumble a basic shell command, or worse - it might burn through your token budget doing it.</p>
+<p>So we asked ourselves: what if we could mix and match models in a single session?</p>
+<p>Not just switching based on user commands, but building Goose with an actual system for routing tasks between different models, each playing to their strengths.</p>
+<p>This is the gap the lead/worker model is designed to fill.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="the-problem-with-single-model-sessions">The Problem with Single-Model Sessions<a href="https://block.github.io/goose/blog/2025/06/16/multi-model-in-goose#the-problem-with-single-model-sessions" class="hash-link" aria-label="Direct link to The Problem with Single-Model Sessions" title="Direct link to The Problem with Single-Model Sessions">​</a></h2>
+<p>Originally, every Goose session used a single model from start to finish. That worked fine for short tasks, but longer sessions were harder to tune:</p>
 <ul>
-<li>
-<p><strong>Input Tokens = Real Money</strong>: Every line in your <code>.goosehints</code> file consumes input tokens. The LLM must process these tokens as part of its system instructions before it even looks at your question. While a small <code>.goosehints</code> file might not seem like a big deal, it can quickly add up if you're not careful. All-day vibe coding sessions are going to be using lots of tokens just interpreting that whole <code>.goosehints</code> file every time.</p>
-</li>
-<li>
-<p><strong>Context Window Impact</strong>: Large <code>.goosehints</code> files eat into your <a href="https://zapier.com/blog/context-window/#:~:text=The%20cons%20of%20a%20large%20context%20window%20in%20AI&amp;text=The%20requirements%20to%20process%20AI,request%2C%20things%20quickly%20add%20up." target="_blank" rel="noopener noreferrer">context window</a>, which is the amount of information the LLM can consider at one time. If your <code>.goosehints</code> file is too big, it can push out important context from your actual question or task, leading to less accurate or helpful responses.</p>
-</li>
+<li>Go too cheap, and the model might miss nuance or break tools.</li>
+<li>Go too premium, and your cost graph starts looking like a ski slope.</li>
 </ul>
-<p>This means a large <code>.goosehints</code> file can:</p>
+<p>There was no built-in way to adapt on the fly.</p>
+<p>We saw this tension in real usage where agents would start strong, then stall out when the model struggled to follow through. Sometimes users would manually switch models mid-session. But that's not scalable, and definitely not agent like.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="designing-the-leadworker-system">Designing the Lead/Worker System<a href="https://block.github.io/goose/blog/2025/06/16/multi-model-in-goose#designing-the-leadworker-system" class="hash-link" aria-label="Direct link to Designing the Lead/Worker System" title="Direct link to Designing the Lead/Worker System">​</a></h2>
+<p>The core idea is simple:</p>
 <ul>
-<li>Increase your AI costs</li>
-<li>Reduce the amount of context available for actual work</li>
-<li>Limit the complexity of tasks you can perform</li>
+<li>Start the session with a lead model that's strong at reasoning and planning.</li>
+<li>After a few back and forths between you and the model (what we call "turns"), hand off to a worker model that's faster and cheaper, but still capable.</li>
+<li>If the worker gets stuck, Goose can detect the failure and temporarily bring the lead back in.</li>
 </ul>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="where-i-went-wrong-with-my-goosehints">Where I went wrong with my .goosehints<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#where-i-went-wrong-with-my-goosehints" class="hash-link" aria-label="Direct link to Where I went wrong with my .goosehints" title="Direct link to Where I went wrong with my .goosehints">​</a></h2>
-<p>When I first started using Goose, I treated <code>.goosehints</code> like a catch-all for everything I wanted Goose to remember. I included:</p>
+<p>You can configure how many turns the lead handles upfront (<code>GOOSE_LEAD_TURNS</code>), how many consecutive failures trigger fallback (<code>GOOSE_LEAD_FAILURE_THRESHOLD</code>), and how long the fallback lasts before Goose retries the worker.</p>
+<p>This gives you a flexible, resilient setup where each model gets used where it shines.</p>
+<p>One of the trickiest parts of this feature was defining what failure looks like.</p>
+<p>We didn't want Goose to swap models just because an API timed out. Instead, we focused on real task failures:</p>
 <ul>
-<li>rules on writing outlines for blog posts</li>
-<li>how I like Python code written and formatted</li>
-<li>notes about frontend development</li>
-<li>etc</li>
+<li>Tool execution errors</li>
+<li>Syntax mistakes in generated code</li>
+<li>File not found or permission errors</li>
+<li>User corrections like "that's wrong" or "try again"</li>
 </ul>
-<p>That meant that every request I would make asking Goose to help come up with a catchy blog title was sending all of my rules about Python and using Tailwind CSS.</p>
-<h3 class="anchor anchorWithStickyNavbar_LWe7" id="so-what-belongs-in-goosehints">So what "belongs" in .goosehints?<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#so-what-belongs-in-goosehints" class="hash-link" aria-label="Direct link to So what &quot;belongs&quot; in .goosehints?" title="Direct link to So what &quot;belongs&quot; in .goosehints?">​</a></h3>
-<p>Here's something I end nearly every AI prompt with:</p>
-<blockquote>
-<p>If you're not 95% sure how to complete these instructions, or that you'll be at least 95% factually accurate, <strong>do not guess or make things up</strong>. Stop and ask me for more information or direction. If you're finding resources online, give me 1 or 2 URLs that informed your response.</p>
-</blockquote>
-<p>I also like to end many of my prompts asking if Goose has any clarifying questions before doing the work I'm attempting:</p>
-<blockquote>
-<p>Based on the information I've provided, ask me any clarifying questions <strong>before</strong> doing any work, or tell me that you're ready to proceed.</p>
-</blockquote>
-<p>Since these are things that I definitely want to add to every request I make to Goose, I've simplified my .goosehints file to include only these types of rules and standards.</p>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="everything-else-got-moved-into-the-memory-extension">Everything else got moved into the Memory Extension<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#everything-else-got-moved-into-the-memory-extension" class="hash-link" aria-label="Direct link to Everything else got moved into the Memory Extension" title="Direct link to Everything else got moved into the Memory Extension">​</a></h2>
-<p>The Memory Extension uses a tagging system to remember context based on keywords. You can give Goose a command to "remember" something, and Goose will write a Memory entry with appropriate tags. The next time you ask Goose to do something with Python, it will parse your request, look for relevant tags, and use appropriate Memory entries to send as part of the context for just that request.</p>
-<p>So all of my Python rules can be written as a command to Goose like this:</p>
-<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Remember that when I ask about Python, I want to conform to the following standards and guidelines:</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- use Python 3.12+ syntax</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- use type hints for all function signatures</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- use f-strings for string formatting</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- use the latest Python features and libraries</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- use Flake8 for linting</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- use black for formatting</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- if I ask to build a CLI based tool, expect to take command line arguments and make a colorful interface using ANSI colors and the rich library</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- if I ask to build an API, expect to build a RESTful API use FastAPI and to send back data in JSON format</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
-<p>Now, Goose will only send these Python-related rules when I ask it to do something with Python. This is far more efficient.</p>
-<p>Here's the resulting Memory file that Goose made:</p>
-<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain"># python standards development formatting linting api cli</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Python Development Standards:</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- Python version: 3.12+</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- Mandatory type hints for all function signatures</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- Use f-strings for string formatting</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- Use latest Python features and libraries</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- Code formatting: black</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- Linting: Flake8</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- CLI tools: Use command line arguments and rich library for colorful interface</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">- APIs: Use FastAPI for RESTful APIs with JSON responses</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
-<p>The first line starts with a hash <code>#</code> and a space-separated list of keywords and tags that it will use to discern when or whether to retrieve this content to send with a request to my LLM.</p>
-<h2 class="anchor anchorWithStickyNavbar_LWe7" id="to-hint-or-not-to-hint">To hint, or not to hint?<a href="https://block.github.io/goose/blog/2025/06/05/whats-in-my-goosehints-file#to-hint-or-not-to-hint" class="hash-link" aria-label="Direct link to To hint, or not to hint?" title="Direct link to To hint, or not to hint?">​</a></h2>
-<p>While <code>.goosehints</code> is powerful, it's important to use it judiciously. By moving appropriate content to the Memory Extension, you can optimize your Goose experience and keep your AI context use more efficient. Remember: every line in <code>.goosehints</code> is sent with every request, so choose wisely what goes there.</p>
-<p>Share your own <code>.goosehints</code> optimization stories in the <a href="http://discord.gg/block-opensource" target="_blank" rel="noopener noreferrer">Goose community on Discord</a>!</p>
+<p>Goose tracks these signals and knows when to escalate. And once the fallback model stabilizes things, it switches back without missing a beat.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="the-value-of-multi-model-design">The Value of Multi-Model Design<a href="https://block.github.io/goose/blog/2025/06/16/multi-model-in-goose#the-value-of-multi-model-design" class="hash-link" aria-label="Direct link to The Value of Multi-Model Design" title="Direct link to The Value of Multi-Model Design">​</a></h2>
+<p>Cost savings are a nice side effect, but the real value is in how this shifts the mental model: treating AI models like tools in a toolbox, each with its own role to play. Some are built for strategy. Some are built for speed. The more your agent can switch between them intelligently, the closer it gets to feeling like a true collaborator.</p>
+<p>We've found that this multi-model design unlocks new workflows:</p>
+<ul>
+<li><strong>Long dev sessions</strong> where planning and execution ebb and flow</li>
+<li><strong>Cross-provider setups</strong> (Claude for planning, OpenAI for execution)</li>
+<li><strong>Lower-friction defaults</strong> for teams worried about LLM spend</li>
+</ul>
+<p>It also opens the door for even smarter routing in the future with things like switching based on tasks, ensemble voting, or maybe even letting Goose decide which model to call based on tool context.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="try-it-out">Try It Out<a href="https://block.github.io/goose/blog/2025/06/16/multi-model-in-goose#try-it-out" class="hash-link" aria-label="Direct link to Try It Out" title="Direct link to Try It Out">​</a></h2>
+<p>Lead/worker mode is already available in Goose.  To enable, export these variables with two models that have already been configured in Goose:</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">export GOOSE_LEAD_MODEL="gpt-4o"</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">export GOOSE_MODEL="claude-4-sonnet"</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+<p>From there, Goose takes care of the hand off, the fallback, and the recovery. You just... keep vibing.</p>
+<p>If you're curious how it all works under the hood, we've got a <a href="https://block.github.io/goose/docs/tutorials/lead-worker">full tutorial</a>.</p>
+<hr>
+<p>If you're experimenting with multi-model setups, <a href="https://discord.gg/block-opensource" target="_blank" rel="noopener noreferrer">share what's working and what isn't</a>.</p>
 ]]></content:encoded>
         </item>
         <item>

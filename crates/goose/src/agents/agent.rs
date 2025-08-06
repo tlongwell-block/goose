@@ -56,6 +56,9 @@ use super::final_output_tool::FinalOutputTool;
 use super::platform_tools;
 use super::tool_execution::{ToolCallResult, CHAT_MODE_TOOL_SKIPPED_RESPONSE, DECLINED_RESPONSE};
 use crate::agents::subagent_task_config::TaskConfig;
+use crate::agents::todo_tools::{
+    todo_read_tool, todo_write_tool, TODO_READ_TOOL_NAME, TODO_WRITE_TOOL_NAME,
+};
 use crate::conversation_fixer::{debug_conversation_fix, ConversationFixer};
 
 const DEFAULT_MAX_TURNS: u32 = 1000;
@@ -97,6 +100,7 @@ pub struct Agent {
     pub(super) tool_route_manager: ToolRouteManager,
     pub(super) scheduler_service: Mutex<Option<Arc<dyn SchedulerTrait>>>,
     pub(super) retry_manager: RetryManager,
+    pub(super) todo_list: Arc<Mutex<String>>,
 }
 
 #[derive(Clone, Debug)]
@@ -173,6 +177,7 @@ impl Agent {
             tool_route_manager: ToolRouteManager::new(),
             scheduler_service: Mutex::new(None),
             retry_manager,
+            todo_list: Arc::new(Mutex::new(String::new())),
         }
     }
 
@@ -462,6 +467,23 @@ impl Agent {
             ToolCallResult::from(Err(ToolError::ExecutionError(
                 "Frontend tool execution required".to_string(),
             )))
+        } else if tool_call.name == TODO_READ_TOOL_NAME {
+            // Handle TODO read tool
+            let todo_content = self.todo_list.lock().await.clone();
+            ToolCallResult::from(Ok(vec![Content::text(todo_content)]))
+        } else if tool_call.name == TODO_WRITE_TOOL_NAME {
+            // Handle TODO write tool
+            let content = tool_call
+                .arguments
+                .get("content")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            let mut todo_list = self.todo_list.lock().await;
+            *todo_list = content.clone();
+
+            ToolCallResult::from(Ok(vec![Content::text("TODO list updated successfully")]))
         } else if tool_call.name == ROUTER_VECTOR_SEARCH_TOOL_NAME
             || tool_call.name == ROUTER_LLM_SEARCH_TOOL_NAME
         {
@@ -678,6 +700,9 @@ impl Agent {
                 platform_tools::manage_extensions_tool(),
                 platform_tools::manage_schedule_tool(),
             ]);
+
+            // Add TODO tools
+            prefixed_tools.extend([todo_read_tool(), todo_write_tool()]);
 
             // Dynamic task tool
             prefixed_tools.push(create_dynamic_task_tool());
@@ -1424,6 +1449,26 @@ mod tests {
         let final_output_tool_system_prompt =
             final_output_tool_ref.as_ref().unwrap().system_prompt();
         assert!(system_prompt.contains(&final_output_tool_system_prompt));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_todo_tools_integration() -> Result<()> {
+        let agent = Agent::new();
+
+        // Test that todo tools are listed
+        let tools = agent.list_tools(None).await;
+
+        let todo_read = tools.iter().find(|tool| tool.name == TODO_READ_TOOL_NAME);
+        let todo_write = tools.iter().find(|tool| tool.name == TODO_WRITE_TOOL_NAME);
+
+        assert!(todo_read.is_some(), "TODO read tool should be present");
+        assert!(todo_write.is_some(), "TODO write tool should be present");
+
+        // Test todo_list initialization
+        let todo_content = agent.todo_list.lock().await;
+        assert_eq!(*todo_content, "", "TODO list should be initially empty");
+
         Ok(())
     }
 }

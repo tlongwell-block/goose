@@ -104,7 +104,7 @@ async fn test_todo_overwrite() {
             "content": "Initial todo list"
         }),
     };
-    agent
+    let _ = agent
         .dispatch_tool_call(write_call1, "test-write-1".to_string(), None)
         .await;
 
@@ -115,7 +115,7 @@ async fn test_todo_overwrite() {
             "content": "Completely new todo list"
         }),
     };
-    agent
+    let _ = agent
         .dispatch_tool_call(write_call2, "test-write-2".to_string(), None)
         .await;
 
@@ -168,7 +168,7 @@ async fn test_todo_concurrent_access() {
 
     // Wait for all writes to complete
     for handle in handles {
-        handle.await.unwrap();
+        let _ = handle.await.unwrap();
     }
 
     // Read the final state
@@ -253,7 +253,7 @@ async fn test_todo_unicode_content() {
         }),
     };
 
-    agent
+    let _ = agent
         .dispatch_tool_call(write_call, "unicode-write".to_string(), None)
         .await;
 

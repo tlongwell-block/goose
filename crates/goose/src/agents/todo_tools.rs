@@ -2,19 +2,19 @@ use indoc::indoc;
 use rmcp::model::{Tool, ToolAnnotations};
 use rmcp::object;
 
-/// Tool name constant for reading TODO content
+/// Tool name constant for reading task planner content
 pub const TODO_READ_TOOL_NAME: &str = "todo__read";
 
-/// Tool name constant for writing TODO content
+/// Tool name constant for writing task planner content
 pub const TODO_WRITE_TOOL_NAME: &str = "todo__write";
 
-/// Creates a tool for reading TODO content.
+/// Creates a tool for reading task planner content.
 ///
-/// This tool reads the entire TODO file content as a string.
+/// This tool reads the entire task planner file content as a string.
 /// It is marked as read-only and safe to use repeatedly.
 ///
 /// # Returns
-/// A configured `Tool` instance for reading TODO content
+/// A configured `Tool` instance for reading task planner content
 pub fn todo_read_tool() -> Tool {
     Tool::new(
         TODO_READ_TOOL_NAME.to_string(),
@@ -23,7 +23,7 @@ pub fn todo_read_tool() -> Tool {
 
             This tool reads the complete TODO file and returns its content as a string.
             Use this to view current tasks, notes, and any other information stored in the TODO file.
-            
+
             The tool will return an error if the TODO file doesn't exist or cannot be read.
         "#}
         .to_string(),
@@ -42,13 +42,13 @@ pub fn todo_read_tool() -> Tool {
     })
 }
 
-/// Creates a tool for writing TODO content.
+/// Creates a tool for writing task planner content.
 ///
-/// This tool writes or overwrites the entire TODO file with new content.
+/// This tool writes or overwrites the entire task planner file with new content.
 /// It replaces the complete file content with the provided string.
 ///
 /// # Returns
-/// A configured `Tool` instance for writing TODO content
+/// A configured `Tool` instance for writing task planner content
 pub fn todo_write_tool() -> Tool {
     Tool::new(
         TODO_WRITE_TOOL_NAME.to_string(),
@@ -57,10 +57,10 @@ pub fn todo_write_tool() -> Tool {
 
             This tool replaces the complete TODO file content with the provided string.
             Use this to update tasks, add new items, or reorganize the TODO file.
-            
+
             WARNING: This operation completely replaces the file content. Make sure to include
             all content you want to keep, not just the changes.
-            
+
             The tool will create the TODO file if it doesn't exist, or overwrite it if it does.
             Returns an error if the file cannot be written due to permissions or other I/O issues.
         "#}

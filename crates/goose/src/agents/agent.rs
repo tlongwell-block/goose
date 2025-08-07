@@ -732,7 +732,7 @@ impl Agent {
                 platform_tools::manage_schedule_tool(),
             ]);
 
-            // Add TODO tools
+            // Add task planner tools
             prefixed_tools.extend([todo_read_tool(), todo_write_tool()]);
 
             // Dynamic task tool
@@ -1487,7 +1487,7 @@ mod tests {
     async fn test_todo_tools_integration() -> Result<()> {
         let agent = Agent::new();
 
-        // Test that todo tools are listed
+        // Test that task planner tools are listed
         let tools = agent.list_tools(None).await;
 
         let todo_read = tools.iter().find(|tool| tool.name == TODO_READ_TOOL_NAME);

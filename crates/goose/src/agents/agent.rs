@@ -477,11 +477,11 @@ impl Agent {
                 "Frontend tool execution required".to_string(),
             )))
         } else if tool_call.name == TODO_READ_TOOL_NAME {
-            // Handle TODO read tool
+            // Handle task planner read tool
             let todo_content = self.todo_list.lock().await.clone();
             ToolCallResult::from(Ok(vec![Content::text(todo_content)]))
         } else if tool_call.name == TODO_WRITE_TOOL_NAME {
-            // Handle TODO write tool
+            // Handle task planner write tool
             let content = tool_call
                 .arguments
                 .get("content")

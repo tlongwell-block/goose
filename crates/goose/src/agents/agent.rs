@@ -152,6 +152,15 @@ where
 }
 
 impl Agent {
+    const DEFAULT_TODO_MAX_CHARS: usize = 50_000;
+
+    fn get_todo_max_chars() -> usize {
+        std::env::var("GOOSE_TODO_MAX_CHARS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(Self::DEFAULT_TODO_MAX_CHARS)
+    }
+
     pub fn new() -> Self {
         // Create channels with buffer size 32 (adjust if needed)
         let (confirm_tx, confirm_rx) = mpsc::channel(32);
@@ -480,10 +489,32 @@ impl Agent {
                 .unwrap_or("")
                 .to_string();
 
+            // Acquire lock first to prevent race condition
             let mut todo_list = self.todo_list.lock().await;
-            *todo_list = content.clone();
 
-            ToolCallResult::from(Ok(vec![Content::text("TODO list updated successfully")]))
+            // Character limit validation
+            let char_count = content.chars().count();
+            let max_chars = Self::get_todo_max_chars();
+
+            // Simple validation - reject if over limit (0 means unlimited)
+            if max_chars > 0 && char_count > max_chars {
+                return (
+                    request_id,
+                    Ok(ToolCallResult::from(Err(ToolError::ExecutionError(
+                        format!(
+                            "Todo list too large: {} chars (max: {})",
+                            char_count, max_chars
+                        ),
+                    )))),
+                );
+            }
+
+            *todo_list = content;
+
+            ToolCallResult::from(Ok(vec![Content::text(format!(
+                "Updated ({} chars)",
+                char_count
+            ))]))
         } else if tool_call.name == ROUTER_VECTOR_SEARCH_TOOL_NAME
             || tool_call.name == ROUTER_LLM_SEARCH_TOOL_NAME
         {

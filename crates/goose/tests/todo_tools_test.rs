@@ -276,3 +276,163 @@ async fn test_todo_unicode_content() {
         }
     }
 }
+
+#[tokio::test]
+async fn test_todo_character_limit_enforcement() {
+    // Set a small limit for testing
+    std::env::set_var("GOOSE_TODO_MAX_CHARS", "100");
+
+    let agent = Agent::new();
+
+    // Create content that exceeds the limit
+    let large_content = "x".repeat(101);
+
+    let write_call = ToolCall {
+        name: TODO_WRITE_TOOL_NAME.to_string(),
+        arguments: json!({
+            "content": large_content
+        }),
+    };
+
+    let (_, result) = agent
+        .dispatch_tool_call(write_call, "test-limit".to_string(), None)
+        .await;
+
+    // Should fail with error
+    if let Ok(result) = result {
+        let response = result.result.await;
+        assert!(response.is_err(), "Should fail with error");
+        if let Err(error) = response {
+            let error_str = error.to_string();
+            assert!(error_str.contains("Todo list too large"));
+            assert!(error_str.contains("101 chars"));
+            assert!(error_str.contains("max: 100"));
+        }
+    } else {
+        panic!("Expected Ok(ToolCallResult) with inner error, got Err");
+    }
+
+    // Clean up
+    std::env::remove_var("GOOSE_TODO_MAX_CHARS");
+}
+
+#[tokio::test]
+async fn test_todo_character_count_in_write_response() {
+    let agent = Agent::new();
+
+    let content = "Test todo content";
+    let write_call = ToolCall {
+        name: TODO_WRITE_TOOL_NAME.to_string(),
+        arguments: json!({
+            "content": content
+        }),
+    };
+
+    let (_, result) = agent
+        .dispatch_tool_call(write_call, "test-count".to_string(), None)
+        .await;
+
+    assert!(result.is_ok());
+    if let Ok(tool_result) = result {
+        let response = tool_result.result.await.unwrap();
+        let text = response[0].as_text().unwrap().text.clone();
+        assert!(text.contains("Updated (17 chars)")); // "Test todo content" is 17 chars
+    }
+}
+
+#[tokio::test]
+async fn test_todo_read_returns_clean_content() {
+    let agent = Agent::new();
+
+    // Write some content
+    let content = "My todo list\n- Task 1\n- Task 2";
+    let write_call = ToolCall {
+        name: TODO_WRITE_TOOL_NAME.to_string(),
+        arguments: json!({
+            "content": content
+        }),
+    };
+
+    agent
+        .dispatch_tool_call(write_call, "test-write".to_string(), None)
+        .await;
+
+    // Read should return exact content, no metadata
+    let read_call = ToolCall {
+        name: TODO_READ_TOOL_NAME.to_string(),
+        arguments: json!({}),
+    };
+
+    let (_, result) = agent
+        .dispatch_tool_call(read_call, "test-read".to_string(), None)
+        .await;
+
+    assert!(result.is_ok());
+    if let Ok(tool_result) = result {
+        let response = tool_result.result.await.unwrap();
+        let text = response[0].as_text().unwrap().text.clone();
+
+        // Should be exactly the original content
+        assert_eq!(text, content);
+        // Should NOT contain any metadata
+        assert!(!text.contains("chars"));
+        assert!(!text.contains("<!--"));
+    }
+}
+
+#[tokio::test]
+async fn test_todo_unlimited_with_zero_limit() {
+    std::env::set_var("GOOSE_TODO_MAX_CHARS", "0");
+
+    let agent = Agent::new();
+
+    // Should accept very large content when limit is 0
+    let huge_content = "x".repeat(100_000);
+
+    let write_call = ToolCall {
+        name: TODO_WRITE_TOOL_NAME.to_string(),
+        arguments: json!({
+            "content": huge_content
+        }),
+    };
+
+    let (_, result) = agent
+        .dispatch_tool_call(write_call, "test-unlimited".to_string(), None)
+        .await;
+
+    // Should succeed
+    assert!(result.is_ok());
+
+    std::env::remove_var("GOOSE_TODO_MAX_CHARS");
+}
+
+#[tokio::test]
+async fn test_todo_unicode_character_counting() {
+    std::env::set_var("GOOSE_TODO_MAX_CHARS", "10");
+
+    let agent = Agent::new();
+
+    // Test with emoji - each emoji is 1 character in .chars().count()
+    let content = "📝📝📝📝📝📝📝📝📝📝📝"; // 11 emoji = 11 chars
+
+    let write_call = ToolCall {
+        name: TODO_WRITE_TOOL_NAME.to_string(),
+        arguments: json!({
+            "content": content
+        }),
+    };
+
+    let (_, result) = agent
+        .dispatch_tool_call(write_call, "test-unicode".to_string(), None)
+        .await;
+
+    // Should fail as it's 11 chars
+    if let Ok(result) = result {
+        let response = result.result.await;
+        assert!(response.is_err(), "Should fail with error");
+    } else {
+        panic!("Expected Ok(ToolCallResult) with inner error, got Err");
+    }
+
+    std::env::remove_var("GOOSE_TODO_MAX_CHARS");
+}

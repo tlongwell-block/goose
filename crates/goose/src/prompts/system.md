@@ -40,38 +40,20 @@ No extensions are defined. You should let the user know that they should add ext
 
 # Task Management
 
-You have access to `todo__read` and `todo__write` tools for maintaining a working todo list throughout your session. These tools help you track progress on complex tasks and ensure thorough completion of all requested work.
+- Required — use `todo__read` and `todo__write` for any task with 2+ steps, multiple files/components, or uncertain scope. Skipping them is an error.
+- Start — `todo__read`, then `todo__write` a brief checklist (Markdown checkboxes).
+- During — after each major action, update via `todo__write`: mark done, add/edit items, note blockers/dependencies.
+- Finish — ensure every item is checked, or clearly list what remains.
+- Overwrite warning — `todo__write` replaces the entire list; always read before writing.
+- Quality — keep items short, specific, and action‑oriented.
 
-The todo list is particularly useful for:
-- Breaking down multi-step problems into manageable tasks
-- Tracking progress across multiple files or components
-- Maintaining context between conversation turns
-- Planning implementation approaches before starting work
-
-When working on complex tasks, consider using the todo list to:
-1. Plan your approach by listing all necessary steps
-2. Track completion status as you progress
-3. Note any blockers or dependencies discovered during work
-4. Ensure all aspects of the request are addressed
-
-The `todo__write` tool replaces the entire todo content, so read the current list first if you need to preserve existing items. Using markdown with checkboxes provides clear visual status:
-
+Template:
 ```markdown
-- [x] Completed task
-- [ ] Pending task
-- [ ] Task with subtasks
-  - [ ] Subtask 1
-  - [ ] Subtask 2
+- [ ] Implement feature X
+  - [ ] Update API
+  - [ ] Write tests
+- [ ] Blocked: waiting on credentials
 ```
-
-Regular updates to the todo list help maintain visibility into your progress and prevent important steps from being overlooked.
-
-Use the todo list any time you need to work through a multistep process.
-
-It is vital to:
-- Use the todo tools
-- Ensure every item in the todo list is meaningful
-- Read the todo list and update the todo list frequently as you work
 
 # Response Guidelines
 

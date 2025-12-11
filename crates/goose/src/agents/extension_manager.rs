@@ -1181,7 +1181,7 @@ impl ExtensionManager {
 
     pub async fn collect_moim(&self) -> Option<String> {
         let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let mut content = format!("<info-msg>\nDatetime: {}\n", timestamp);
+        let mut content = format!("<info-msg>\nThe current datetime is {}\n", timestamp);
 
         let extensions = self.extensions.lock().await;
         for (name, extension) in extensions.iter() {

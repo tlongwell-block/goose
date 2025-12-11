@@ -148,6 +148,7 @@ jobs:
         run: |
           mkdir -p $HOME/.local/share/goose/sessions
           mkdir -p $HOME/.config/goose
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
           echo "$GOOSE_RECIPE" | envsubst '$ISSUE_NUMBER $ISSUE_TITLE $ISSUE_BODY' > /tmp/recipe.yaml
 

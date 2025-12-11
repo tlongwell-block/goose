@@ -91,7 +91,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       (!github.event.issue.pull_request &&
-       contains(github.event.comment.body, '@goose') &&
+       startsWith(github.event.comment.body, '/goose') &&
        contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
 
     runs-on: ubuntu-latest

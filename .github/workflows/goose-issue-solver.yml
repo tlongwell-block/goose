@@ -1,0 +1,187 @@
+name: goose Issue Solver
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to solve'
+        required: true
+        type: string
+
+env:
+  GOOSE_RECIPE: |
+    version: "1.0.0"
+    title: "Solve GitHub Issue"
+    description: "Solve GitHub issue #${ISSUE_NUMBER}"
+
+    extensions:
+      - type: builtin
+        name: developer
+      - type: platform
+        name: todo
+
+    instructions: |
+      Principles:
+      - Extract all requirements before coding. Missing one means failure.
+      - Understand before changing. Research the code first.
+      - Follow existing patterns and AGENTS.md if it exists.
+      - Stop when requirements are met. Nothing more.
+      - Verify through deterministic means.
+      - Your context degrades. The TODO is your memory. Update it after each step.
+
+    prompt: |
+      Solve GitHub issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
+
+      The issue is saved at /tmp/issue.json
+
+      Write this to your TODO immediately and update as you progress:
+
+      ## Phase 1: Understand
+      - [ ] Read /tmp/issue.json
+      - [ ] Write all requirements (explicit + implicit) to /tmp/requirements.md
+      - [ ] Read AGENTS.md if it exists
+
+      ## Phase 2: Research
+      - [ ] Explore codebase with analyze and rg
+      - [ ] Identify files that need to change
+      - [ ] Update TODO with findings
+
+      ## Phase 3: Plan
+      - [ ] Decide on implementation approach
+      - [ ] For nontrivial issues, use subagents to evaluate architecture or implementation choices
+      - [ ] Update TODO with specific changes to make
+
+      ## Phase 4: Implement
+      - [ ] Implement minimal fix per /tmp/requirements.md
+      - [ ] Before adding anything, check: is it in the requirements? If not, don't.
+      - [ ] Max 10 files, no .github/, no lock files, no secrets
+
+      ## Phase 5: Verify
+      - [ ] cargo check
+      - [ ] cargo test (affected crates)
+      - [ ] cargo fmt
+      - [ ] ./scripts/clippy-lint.sh
+      - [ ] Fix failures, retry up to 3 times
+
+      ## Phase 6: Confirm (MANDATORY)
+      - [ ] Reread /tmp/issue.json
+      - [ ] Reread /tmp/requirements.md
+      - [ ] Confirm all requirements met, nothing extra added
+      - [ ] Write a summary of changes to /tmp/issue_summary.txt
+
+      The Phase 6 "Reread" steps MUST appear in your updated TODO. Skipping them is failure.
+
+      Only write /tmp/issue_summary.txt if the fix is complete and verified.
+      Run `git add` for any new files required for the fix.
+      Do NOT commit. Leave changes in the working directory for the workflow to handle.
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: goose-issue-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  solve-issue:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (!github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@goose') &&
+       contains(fromJSON('["OWNER", "MEMBER"]'), github.event.comment.author_association))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    container:
+      image: ghcr.io/block/goose:latest
+      options: --user root
+      env:
+        GOOSE_PROVIDER: ${{ vars.GOOSE_PROVIDER || 'openai' }}
+        GOOSE_MODEL: ${{ vars.GOOSE_MODEL || 'gpt-5.1' }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        HOME: /tmp/goose-home
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install tools
+        run: |
+          apt-get update
+          apt-get install -y jq ripgrep build-essential gettext
+
+      - name: Get issue details
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+        run: |
+          gh api /repos/${{ github.repository }}/issues/$ISSUE_NUMBER > /tmp/issue.json
+
+          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+
+          echo "title<<TITLE_EOF" >> $GITHUB_OUTPUT
+          jq -r '.title' /tmp/issue.json >> $GITHUB_OUTPUT
+          echo "TITLE_EOF" >> $GITHUB_OUTPUT
+
+          echo "body<<BODY_EOF" >> $GITHUB_OUTPUT
+          jq -r '.body // ""' /tmp/issue.json >> $GITHUB_OUTPUT
+          echo "BODY_EOF" >> $GITHUB_OUTPUT
+
+      - name: Run goose
+        id: goose
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+        run: |
+          mkdir -p $HOME/.local/share/goose/sessions
+          mkdir -p $HOME/.config/goose
+
+          echo "$GOOSE_RECIPE" | envsubst '$ISSUE_NUMBER $ISSUE_TITLE $ISSUE_BODY' > /tmp/recipe.yaml
+
+          goose run --recipe /tmp/recipe.yaml
+
+          if [ -n "$(git status --porcelain)" ] && [ -f /tmp/issue_summary.txt ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "summary<<SUMMARY_EOF" >> $GITHUB_OUTPUT
+            cat /tmp/issue_summary.txt >> $GITHUB_OUTPUT
+            echo "SUMMARY_EOF" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify no workflow changes
+        if: steps.goose.outputs.has_changes == 'true'
+        run: |
+          if git diff --name-only | grep -q "^\.github/"; then
+            echo "::error::Changes to .github/ are not allowed"
+            git checkout -- .github/
+          fi
+
+      - name: Create Pull Request
+        if: steps.goose.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # pin@v7.0.8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "fix: ${{ steps.issue.outputs.title }}"
+          title: "fix: ${{ steps.issue.outputs.title }}"
+          branch: goose/issue-${{ steps.issue.outputs.number }}
+          delete-branch: true
+          draft: true
+          labels: goose-generated
+          body: |
+            Closes #${{ steps.issue.outputs.number }}
+
+            ## Summary
+            ${{ steps.goose.outputs.summary || 'See commits for details.' }}
+
+            ---
+            *Generated by goose Issue Solver*

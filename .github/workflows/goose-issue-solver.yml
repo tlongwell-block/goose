@@ -129,7 +129,7 @@ jobs:
         if: github.event_name == 'issue_comment'
         env:
           ISSUE_JSON: ${{ toJSON(github.event.issue) }}
-        run: echo "$ISSUE_JSON" > /tmp/issue.json
+        run: printenv ISSUE_JSON > /tmp/issue.json
 
       - name: Get issue details (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'

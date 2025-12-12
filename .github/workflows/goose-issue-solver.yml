@@ -125,21 +125,20 @@ jobs:
           apt-get update
           apt-get install -y gh
 
-      - name: Get issue details
-        id: issue
+      - name: Get issue details (issue_comment)
+        if: github.event_name == 'issue_comment'
+        run: echo '${{ toJSON(github.event.issue) }}' > /tmp/issue.json
+
+      - name: Get issue details (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
-        run: |
-          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+        run: gh api /repos/${{ github.repository }}/issues/${{ github.event.inputs.issue_number }} > /tmp/issue.json
 
-          # For issue_comment events, use the frozen event payload to prevent TOCTOU attacks
-          # For workflow_dispatch, fetch current issue state via API
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            echo '${{ toJSON(github.event.issue) }}' > /tmp/issue.json
-          else
-            gh api /repos/${{ github.repository }}/issues/$ISSUE_NUMBER > /tmp/issue.json
-          fi
+      - name: Set issue outputs
+        id: issue
+        run: |
+          echo "number=$(jq -r '.number' /tmp/issue.json)" >> $GITHUB_OUTPUT
 
           echo "title<<TITLE_EOF" >> $GITHUB_OUTPUT
           jq -r '.title' /tmp/issue.json >> $GITHUB_OUTPUT

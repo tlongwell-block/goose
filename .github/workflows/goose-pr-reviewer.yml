@@ -8,7 +8,6 @@
 #
 # Examples:
 #   /goose
-#   /goose focus on security implications
 #   /goose check error handling in src/auth/
 #
 # Required Secrets:

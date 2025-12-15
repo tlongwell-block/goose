@@ -125,7 +125,6 @@ env:
 permissions:
   contents: read
   pull-requests: write
-  reactions: write
 
 concurrency:
   group: goose-pr-review-${{ github.event.issue.number || github.event.inputs.pr_number }}-${{ startsWith(github.event.comment.body || '', '/goose') }}

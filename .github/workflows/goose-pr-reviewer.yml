@@ -186,8 +186,8 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           if [ -n "$COMMENT_BODY" ]; then
-            # Extract everything after "/goose"
-            INSTRUCTIONS=$(echo "$COMMENT_BODY" | sed 's|^/goose\s*||' | xargs)
+            # Extract everything after "/goose" and trim whitespace
+            INSTRUCTIONS=$(echo "$COMMENT_BODY" | sed 's|^/goose||' | sed 's|^[[:space:]]*||' | sed 's|[[:space:]]*$||')
           fi
           
           if [ -z "$INSTRUCTIONS" ]; then

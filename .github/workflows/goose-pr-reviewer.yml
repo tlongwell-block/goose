@@ -220,6 +220,7 @@ jobs:
         if: steps.goose.outputs.has_review == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ steps.pr.outputs.number }}
         run: |
           gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body-file /tmp/pr_review.md
 
@@ -227,5 +228,6 @@ jobs:
         if: failure() || steps.goose.outputs.has_review != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ steps.pr.outputs.number || github.event.issue.number || github.event.inputs.pr_number }}
         run: |
           gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "⚠️ goose PR review could not be completed. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
